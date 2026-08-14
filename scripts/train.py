@@ -203,13 +203,13 @@ def main():
         train_loss = train_one_epoch(
             model, train_loader, criterion, optimizer, device,
             epoch=epoch, use_amp=args.use_amp, grad_clip=args.grad_clip,
-            block_type={'E0': 'conv', 'E1': 'dw', 'E2': 'iso', 'E3': 'old_sip', 'E4': 'sipv2', 'E5': 'sipv2_full'}[args.exp]
+            block_type={'E0': 'conv', 'E1': 'dw', 'E1D': 'dcn', 'E2': 'iso', 'E3': 'old_sip', 'E4': 'sipv2', 'E5': 'sipv2_full'}[args.exp]
         )
 
         scheduler.step()
 
         # Validate every epoch
-        bt = {'E0': 'conv', 'E1': 'dw', 'E2': 'iso', 'E3': 'old_sip', 'E4': 'sipv2', 'E5': 'sipv2_full'}[args.exp]
+        bt = {'E0': 'conv', 'E1': 'dw', 'E1D': 'dcn', 'E2': 'iso', 'E3': 'old_sip', 'E4': 'sipv2', 'E5': 'sipv2_full'}[args.exp]
         should_save = (epoch + 1) % args.save_freq == 0 or epoch == args.epochs - 1
         if args.exp in ('E4', 'E5'):
             metrics = validate_with_tensor_capture(
