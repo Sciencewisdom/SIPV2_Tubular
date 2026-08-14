@@ -3,15 +3,19 @@ message: "If you use this software, please cite both the article and the softwar
 type: software
 title: "SIP-v2: Gradient-Anchored Anisotropic Propagation for Thin Tubular Structure Segmentation"
 authors:
-  - family-names: "Anonymous"
-    given-names: "Authors"
+  - family-names: "Jia"
+    given-names: "Zeyu"
+  - family-names: "Ming"
+    given-names: "Xin"
 repository-code: "https://github.com/Sciencewisdom/SIPV2_Tubular"
 license: MIT
 preferred-citation:
   type: article
   title: "SIP-v2: Gradient-Anchored Anisotropic Propagation for Thin Tubular Structure Segmentation"
   authors:
-    - family-names: "Anonymous"
-      given-names: "Authors"
+    - family-names: "Jia"
+      given-names: "Zeyu"
+    - family-names: "Ming"
+      given-names: "Xin"
   journal: "Under Review"
   year: 2026
