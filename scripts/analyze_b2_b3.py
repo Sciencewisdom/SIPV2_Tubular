@@ -57,7 +57,7 @@ def b3():
     # parsing training-log final validation metrics.
     KEYS = ['dice', 'cldice', 'skel_recall', 'apls', 'gap_recovery']
     out = {}
-    jsons = {a: f'outputs/b3_eval_{a}.json' for a in ['sobel', 'stencil3', 'nogate']}
+    jsons = {a: f'outputs/b3_eval_{a}.json' for a in ['sobel', 'stencil3', 'nogate', 'scharr_bs4']}
     if any(os.path.exists(p) for p in jsons.values()):
         for name, path in jsons.items():
             if not os.path.exists(path):
