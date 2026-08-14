@@ -3,6 +3,7 @@ Model factory: create U-Net with different block types.
 """
 from .unet import UNet
 from .blocks_conv import ConvBlock, DWBlock
+from .blocks_dcn import DCNBlock
 from .blocks_diffusion import IsoDiffusionBlock
 from .blocks_old_sip import OldSIPBlock
 from .blocks_sipv2 import SIPV2BlockWrapper
@@ -13,6 +14,7 @@ from .blocks_sipv2_road import SIPV2RoadBlockWrapper
 BLOCK_REGISTRY = {
     'conv': ConvBlock,
     'dw': DWBlock,
+    'dcn': DCNBlock,
     'iso': IsoDiffusionBlock,
     'old_sip': OldSIPBlock,
     'sipv2': SIPV2BlockWrapper,
@@ -68,6 +70,7 @@ def build_experiment_model(exp_name, **override_kwargs):
     config = {
         'E0': {'block_type': 'conv'},
         'E1': {'block_type': 'dw'},
+        'E1D': {'block_type': 'dcn'},
         'E2': {'block_type': 'iso'},
         'E3': {'block_type': 'old_sip'},
         'E4': {'block_type': 'sipv2'},

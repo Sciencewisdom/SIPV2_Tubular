@@ -9,14 +9,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..ops.structure_tensor import StructureTensor
+from ..ops.structure_tensor import StructureTensor, compute_structure_tensor
 from ..ops.scharr import scharr_gradients
+from ..ops.directional_diffusion import directional_diffusion
 from ..ops.directional_diffusion_road import (
     directional_diffusion_5x5,
     isotropic_diffusion_5x5,
     build_diffusion_tensor_from_structure,
 )
 from ..ops.norm_clip import relative_norm_clip
+
+
+def isotropic_diffusion_3x3(x, alpha):
+    """5-point Laplacian isotropic diffusion (B3 stencil ablation)."""
+    out = 0.0
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        out = out + torch.roll(x, shifts=(dy, dx), dims=(-2, -1)) - x
+    return alpha * out
 
 
 class StructureTensorScharr(nn.Module):
@@ -118,6 +127,8 @@ class SIPV2RoadBlock(nn.Module):
         directions=16,
         tensor_sigma=1.5,
         use_confidence_gate=True,
+        grad_op='scharr',
+        stencil=5,
     ):
         super().__init__()
         self.channels = channels
@@ -128,6 +139,11 @@ class SIPV2RoadBlock(nn.Module):
         self.directions = directions
         self.tensor_sigma = tensor_sigma
         self.use_confidence_gate = use_confidence_gate
+        # Ablation switches (B3): gradient operator and diffusion stencil size
+        assert grad_op in ('scharr', 'sobel')
+        assert stencil in (3, 5)
+        self.grad_op = grad_op
+        self.stencil = stencil
 
         # Reaction branch
         hidden = channels * 2
@@ -177,8 +193,11 @@ class SIPV2RoadBlock(nn.Module):
         else:
             gray = image
 
-        # Scharr-based structure tensor
-        st = compute_structure_tensor_scharr(gray, sigma=self.tensor_sigma)
+        # Structure tensor (Scharr by default; Sobel for the B3 ablation)
+        if self.grad_op == 'sobel':
+            st = compute_structure_tensor(gray, sigma=self.tensor_sigma)
+        else:
+            st = compute_structure_tensor_scharr(gray, sigma=self.tensor_sigma)
 
         # Predict lambda strengths
         u = self.lambda_norm(x)
@@ -189,8 +208,11 @@ class SIPV2RoadBlock(nn.Module):
         # Build diffusion tensor
         T = build_diffusion_tensor_from_structure(st, lambda_par, lambda_perp)
 
-        # Anisotropic diffusion
-        diff_aniso = directional_diffusion_5x5(x, T, directions=self.directions)
+        # Anisotropic diffusion (5x5 stencil by default; 3x3 for the B3 ablation)
+        if self.stencil == 3:
+            diff_aniso = directional_diffusion(x, T, directions=8)
+        else:
+            diff_aniso = directional_diffusion_5x5(x, T, directions=self.directions)
         diff_aniso, scale_aniso = relative_norm_clip(diff_aniso, x, rho=self.rho)
 
         # Confidence gate
@@ -202,7 +224,10 @@ class SIPV2RoadBlock(nn.Module):
             # Isotropic fallback
             u_iso = self.iso_norm(x)
             alpha = self.iso_head(u_iso) + 1e-4
-            diff_iso = isotropic_diffusion_5x5(x, alpha)
+            if self.stencil == 3:
+                diff_iso = isotropic_diffusion_3x3(x, alpha)
+            else:
+                diff_iso = isotropic_diffusion_5x5(x, alpha)
             diff_iso, scale_iso = relative_norm_clip(diff_iso, x, rho=self.rho)
 
             diff = c * diff_aniso + (1.0 - c) * diff_iso

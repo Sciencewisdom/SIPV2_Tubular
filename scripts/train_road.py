@@ -64,6 +64,10 @@ def parse_args():
                         help='Diffusion directions (8 or 16)')
     parser.add_argument('--use_confidence_gate', action=argparse.BooleanOptionalAction, default=True,
                         help='Use orientation confidence gate (SIP-v2 Road)')
+    parser.add_argument('--grad_op', type=str, default='scharr', choices=['scharr', 'sobel'],
+                        help='Gradient operator for the structure tensor (B3 ablation)')
+    parser.add_argument('--stencil', type=int, default=5, choices=[3, 5],
+                        help='Diffusion stencil size (B3 ablation)')
     return parser.parse_args()
 
 
@@ -184,6 +188,8 @@ def main():
         decoder_blocks=1,
         directions=args.directions,
         use_confidence_gate=args.use_confidence_gate,
+        grad_op=args.grad_op,
+        stencil=args.stencil,
     )
     model = model.to(device)
     n_params = model.count_parameters()

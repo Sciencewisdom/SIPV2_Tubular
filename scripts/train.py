@@ -26,7 +26,7 @@ from sipv2.utils import set_seed, save_checkpoint, load_checkpoint
 def parse_args():
     parser = argparse.ArgumentParser(description='Train SIP-v2 on DRIVE')
     parser.add_argument('--exp', type=str, default='E0',
-                        choices=['E0', 'E1', 'E2', 'E3', 'E4', 'E5'],
+                        choices=['E0', 'E1', 'E1D', 'E2', 'E3', 'E4', 'E5'],
                         help='Experiment: E0=Conv, E1=DW, E2=Iso, E3=OldSIP, E4=SIP-v2')
     parser.add_argument('--dataset', type=str, default='DRIVE',
                         choices=['DRIVE', 'CHASE_DB1', 'HRF'],
