@@ -44,7 +44,7 @@ def b2():
 
 
 def b3():
-    print('\n=== B3: road component ablation (from b3_ablation.log) ===')
+    print('\n=== B3: road component ablation ===')
     # R1 (full SIP-v2 Road, seed 42) reference from the deterministic per-case eval
     ref_path = 'outputs/road_percase_deterministic.json'
     if os.path.exists(ref_path):
@@ -53,6 +53,23 @@ def b3():
         for k in ['dice', 'cldice', 'skel_recall', 'apls', 'gap_recovery']:
             v = np.array([c[k] for c in cases if c.get(k) is not None], dtype=float)
             print(f'  {k}: {v.mean():.4f} +- {v.std():.4f}')
+    # Prefer deterministic per-case eval JSONs (run_b3_eval.sh); fall back to
+    # parsing training-log final validation metrics.
+    KEYS = ['dice', 'cldice', 'skel_recall', 'apls', 'gap_recovery']
+    out = {}
+    jsons = {a: f'outputs/b3_eval_{a}.json' for a in ['sobel', 'stencil3', 'nogate']}
+    if any(os.path.exists(p) for p in jsons.values()):
+        for name, path in jsons.items():
+            if not os.path.exists(path):
+                continue
+            cases = json.load(open(path))['cases']
+            agg = {}
+            for k in KEYS:
+                v = np.array([c[k] for c in cases if c.get(k) is not None], dtype=float)
+                agg[k] = {'mean': float(v.mean()), 'std': float(v.std()), 'n': len(v)}
+            out[name] = {'deterministic': agg}
+            print(name, {k: f"{a['mean']:.4f}+-{a['std']:.4f}" for k, a in agg.items()})
+        return out
     log = 'outputs/b3_ablation.log'
     if not os.path.exists(log):
         print(f'MISSING {log}')
