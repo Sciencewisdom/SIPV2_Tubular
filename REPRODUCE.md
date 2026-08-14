@@ -121,6 +121,7 @@ bash scripts/run_b2_dcn_sweep.sh
 # B3: road-component ablation (Scharr/Sobel, stencil, isotropy gate)
 bash scripts/run_b3_road_ablation.sh
 bash scripts/run_b3_eval.sh                     # deterministic per-case evaluation
+bash scripts/run_b3_scharr_bs4_control.sh       # bs4 Scharr control (batch-size confound)
 
 # Joint analysis of B2+B3
 python scripts/analyze_b2_b3.py
