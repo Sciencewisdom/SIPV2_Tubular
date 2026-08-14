@@ -59,6 +59,9 @@ def parse_args():
                         help='Resume from checkpoint')
     parser.add_argument('--use_cldice', action='store_true', default=False,
                         help='Use clDice loss (Phase 2)')
+    parser.add_argument('--topo_loss', type=str, default='none',
+                        choices=['none', 'cldice', 'skelrec'],
+                        help='Topology loss: none / clDice / skeleton-recall (B1)')
     parser.add_argument('--cldice_lambda', type=float, default=0.3,
                         help='clDice loss weight')
     parser.add_argument('--cldice_warmup', type=int, default=20,
@@ -147,13 +150,21 @@ def main():
     print(f"Parameters: {n_params:,} ({n_params/1e6:.2f}M)")
 
     # Loss
-    if args.use_cldice:
+    if args.topo_loss == 'cldice' or args.use_cldice:
         criterion = BCEDiceCLDiceLoss(
             bce_weight=1.0, dice_weight=1.0,
             cldice_weight=args.cldice_lambda,
             cldice_warmup=args.cldice_warmup,
         )
         print(f'Using BCEDice + clDice (lambda={args.cldice_lambda}, warmup={args.cldice_warmup})')
+    elif args.topo_loss == 'skelrec':
+        from sipv2.losses import BCEDiceSkelRecLoss
+        criterion = BCEDiceSkelRecLoss(
+            bce_weight=1.0, dice_weight=1.0,
+            skelrec_weight=args.cldice_lambda,
+            skelrec_warmup=args.cldice_warmup,
+        )
+        print(f'Using BCEDice + SkelRec (lambda={args.cldice_lambda}, warmup={args.cldice_warmup})')
     else:
         criterion = BCEDiceLoss(bce_weight=1.0, dice_weight=1.0)
 
