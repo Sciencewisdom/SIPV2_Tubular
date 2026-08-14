@@ -24,8 +24,8 @@ from sipv2.datasets.mass_roads import MassachusettsRoadsDataset
 from sipv2.metrics.junction_preservation import compute_junction_preservation
 
 CKPTS = {
-    ('R2', 0):  'outputs/road_real_r2_seed0/road_sipv2_road_crop512_bs8_ep50_seed0_cldice0.3/checkpoints/checkpoint_best.pth',
-    ('R2', 1):  'outputs/road_real_r2_seed1/road_sipv2_road_crop512_bs8_ep50_seed1_cldice0.3/checkpoints/checkpoint_best.pth',
+    ('R2', 0):  'outputs/road_real_r2_seed0/road_sipv2_road_crop512_bs8_ep50_seed0_cldice0.3/checkpoints/checkpoint_epoch49.pth',
+    ('R2', 1):  'outputs/road_real_r2_seed1/road_sipv2_road_crop512_bs8_ep50_seed1_cldice0.3/checkpoints/checkpoint_epoch49.pth',
     ('R2', 42): 'outputs/road_real_r2_seed42/road_sipv2_road_crop512_bs8_ep50_seed42_cldice0.3/checkpoints/checkpoint_epoch49.pth',
     ('ATW', 0):  'outputs/road_experiments/road_sipv2_road_atw_crop512_bs8_ep5_seed0_atw0.15/checkpoints/checkpoint_final.pth',
     ('ATW', 1):  'outputs/road_experiments/road_sipv2_road_atw_crop512_bs8_ep5_seed1_atw0.15/checkpoints/checkpoint_final.pth',
