@@ -11,7 +11,7 @@ repository-code: "https://github.com/Sciencewisdom/SIPV2_Tubular"
 license: MIT
 preferred-citation:
   type: article
-  title: "SIP-v2: Gradient-Anchored Anisotropic Propagation for Thin Tubular Structure Segmentation"
+  title: "Directional Propagation Determines Whether Topology Supervision Helps or Harms: Architecture-Loss Co-design for Thin Tubular Structure Segmentation"
   authors:
     - family-names: "Jia"
       given-names: "Zeyu"
