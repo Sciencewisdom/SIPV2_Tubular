@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the article and the software itself."
+type: software
+title: "SIP-v2: Gradient-Anchored Anisotropic Propagation for Thin Tubular Structure Segmentation"
+authors:
+  - family-names: "Anonymous"
+    given-names: "Authors"
+repository-code: "https://github.com/Sciencewisdom/SIPV2_Tubular"
+license: MIT
+preferred-citation:
+  type: article
+  title: "SIP-v2: Gradient-Anchored Anisotropic Propagation for Thin Tubular Structure Segmentation"
+  authors:
+    - family-names: "Anonymous"
+      given-names: "Authors"
+  journal: "Under Review"
+  year: 2026

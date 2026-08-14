@@ -1,0 +1,27 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="sipv2",
+    version="2.0.0",
+    description="SIP-v2: Gradient-Anchored Anisotropic Propagation for Thin Tubular Structure Segmentation",
+    author="SIP-v2 Team",
+    packages=find_packages(),
+    python_requires=">=3.8",
+    install_requires=[
+        "torch>=2.0.0",
+        "torchvision>=0.15.0",
+        "numpy>=1.24.0",
+        "scipy>=1.10.0",
+        "scikit-image>=0.20.0",
+        "scikit-learn>=1.2.0",
+        "pillow>=9.5.0",
+        "matplotlib>=3.7.0",
+        "opencv-python>=4.7.0",
+        "tqdm>=4.65.0",
+        "pyyaml>=6.0",
+        "tensorboard>=2.13.0",
+        "pandas>=2.0.0",
+        "imageio>=2.28.0",
+        "networkx>=3.0",
+    ],
+)
