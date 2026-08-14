@@ -107,6 +107,28 @@ python scripts/eval_road_deterministic.py \
     --block_type sipv2_road
 ```
 
+## Phase 3: Interaction Generality Controls (Supplement S12/S13)
+
+```bash
+# B1: second topology loss (soft skeleton recall) sweep, E1 vs E4 on DRIVE
+bash scripts/run_b1_skelrec_sweep.sh
+python scripts/analyze_b1_skelrec.py            # -> Table S12 / Fig S12 numbers
+python scripts/recompute_drive_breaks_b1.py     # branch-break counts for B1 runs
+
+# B2: parameter-matched DCNv2 control (E1D) under the same clDice sweep
+bash scripts/run_b2_dcn_sweep.sh
+
+# B3: road-component ablation (Scharr/Sobel, stencil, isotropy gate)
+bash scripts/run_b3_road_ablation.sh
+bash scripts/run_b3_eval.sh                     # deterministic per-case evaluation
+
+# Joint analysis of B2+B3
+python scripts/analyze_b2_b3.py
+
+# GPU-memory-safe relay (runs B3 then B2 sequentially on a 12GB card)
+bash scripts/run_b3_b2_chain.sh
+```
+
 ## Statistical Analysis
 
 ```bash
