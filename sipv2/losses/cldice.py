@@ -27,11 +27,22 @@ class CLDiceLoss(nn.Module):
     """
     clDice loss with skeleton extraction.
     For efficiency, we use morphological approximation.
+
+    variant:
+        'crossed'  — legacy repo formula (numerators crossed vs the reference;
+                     kept as default so all historical experiments remain
+                     comparable). tprec = |S(G)∩P|/|S(P)|, tsens = |S(P)∩G|/|S(G)|.
+        'official' — Shit et al. 2021 reference formula:
+                     tprec = |S(P)∩G|/|S(P)|, tsens = |S(G)∩P|/|S(G)|.
+    On trained DRIVE predictions the two differ by ~0.066 clDice on average
+    (crossed is systematically lower); see progress_20260814_presubmission_audit.md §9.
     """
 
-    def __init__(self, smooth=1e-6):
+    def __init__(self, smooth=1e-6, variant='crossed'):
         super().__init__()
+        assert variant in ('crossed', 'official')
         self.smooth = smooth
+        self.variant = variant
 
     def _soft_skeletonize(self, x, num_iter=5):
         """
@@ -62,8 +73,14 @@ class CLDiceLoss(nn.Module):
             skel_target = skel_target * mask
 
         # clDice
-        tprec = (skel_target * pred_prob).sum() / (skel_pred.sum() + self.smooth)
-        tsens = (skel_pred * target.float()).sum() / (skel_target.sum() + self.smooth)
+        if self.variant == 'official':
+            # Shit et al. 2021: tprec = |S(P)∩G|/|S(P)|, tsens = |S(G)∩P|/|S(G)|
+            tprec = (skel_pred * target.float()).sum() / (skel_pred.sum() + self.smooth)
+            tsens = (skel_target * pred_prob).sum() / (skel_target.sum() + self.smooth)
+        else:
+            # legacy crossed variant (historical default)
+            tprec = (skel_target * pred_prob).sum() / (skel_pred.sum() + self.smooth)
+            tsens = (skel_pred * target.float()).sum() / (skel_target.sum() + self.smooth)
 
         cl_dice = 2.0 * tprec * tsens / (tprec + tsens + self.smooth)
         return 1.0 - cl_dice

@@ -11,7 +11,8 @@ from .cldice import CLDiceLoss
 class BCEDiceCLDiceLoss(nn.Module):
     """BCE + Dice + optional clDice with warmup."""
 
-    def __init__(self, bce_weight=1.0, dice_weight=1.0, cldice_weight=0.3, cldice_warmup=20):
+    def __init__(self, bce_weight=1.0, dice_weight=1.0, cldice_weight=0.3, cldice_warmup=20,
+                 cldice_variant='crossed'):
         super().__init__()
         self.bce_weight = bce_weight
         self.dice_weight = dice_weight
@@ -19,7 +20,7 @@ class BCEDiceCLDiceLoss(nn.Module):
         self.cldice_warmup = cldice_warmup
         self.bce = nn.BCEWithLogitsLoss(reduction='none')
         self.dice = DiceLoss()
-        self.cldice = CLDiceLoss()
+        self.cldice = CLDiceLoss(variant=cldice_variant)
 
     def forward(self, pred, target, mask=None, epoch=0):
         # BCE (with mask)
