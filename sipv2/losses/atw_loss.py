@@ -28,8 +28,11 @@ class ATWLoss(nn.Module):
     Low coherence (junctions, isotropic regions) -> reduced topology pressure.
     """
 
-    def __init__(self, lambda_base=0.5, sigma=1.0, smooth=1e-6, skeleton_iter=5, use_prediction=False):
+    def __init__(self, lambda_base=0.5, sigma=1.0, smooth=1e-6, skeleton_iter=5, use_prediction=False,
+                 variant='crossed'):
         super().__init__()
+        assert variant in ('crossed', 'official')
+        self.variant = variant
         self.lambda_base = lambda_base
         self.smooth = smooth
         self.skeleton_iter = skeleton_iter
@@ -79,10 +82,19 @@ class ATWLoss(nn.Module):
         skel_target = soft_skeletonize(target.float(), self.skeleton_iter)
 
         # Weighted precision and sensitivity
-        tprec = (skel_target * pred_prob * coherence).sum() / \
-                (skel_pred * coherence).sum().clamp_min(self.smooth)
-        tsens = (skel_pred * target.float() * coherence).sum() / \
-                (skel_target * coherence).sum().clamp_min(self.smooth)
+        if self.variant == 'official':
+            # Shit et al. 2021 reference pairing: tprec uses pred skeleton in the
+            # numerator, tsens uses target skeleton.
+            tprec = (skel_pred * target.float() * coherence).sum() / \
+                    (skel_pred * coherence).sum().clamp_min(self.smooth)
+            tsens = (skel_target * pred_prob * coherence).sum() / \
+                    (skel_target * coherence).sum().clamp_min(self.smooth)
+        else:
+            # legacy crossed variant (historical default)
+            tprec = (skel_target * pred_prob * coherence).sum() / \
+                    (skel_pred * coherence).sum().clamp_min(self.smooth)
+            tsens = (skel_pred * target.float() * coherence).sum() / \
+                    (skel_target * coherence).sum().clamp_min(self.smooth)
 
         cl_dice = 2.0 * tprec * tsens / (tprec + tsens + self.smooth)
         loss = self.lambda_base * (1.0 - cl_dice)
