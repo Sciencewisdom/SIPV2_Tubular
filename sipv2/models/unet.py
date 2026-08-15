@@ -134,7 +134,7 @@ class UNet(nn.Module):
         skips = []
         for i in range(self.num_stages):
             # Pass image to blocks that need it
-            if self.block_type in ('sipv2',) and image is not None:
+            if self.block_type in ('sipv2', 'sipv2_full', 'sipv2_road') and image is not None:
                 for block in self.enc_blocks[i]:
                     x = block(x, image)
             else:
@@ -156,7 +156,7 @@ class UNet(nn.Module):
             x = torch.cat([x, skip], dim=1)
             x = self.dec_fuse[idx](x)
 
-            if self.block_type in ('sipv2',) and image is not None:
+            if self.block_type in ('sipv2', 'sipv2_full', 'sipv2_road') and image is not None:
                 for block in self.dec_blocks[idx]:
                     x = block(x, image)
             else:
