@@ -65,11 +65,15 @@ def evaluate_checkpoint(checkpoint_path, args):
         crop_size = config.get('crop_size', args.crop_size)
         directions = config.get('directions', 16)
         use_confidence_gate = config.get('use_confidence_gate', True)
+        grad_op = config.get('grad_op', 'scharr')
+        stencil = config.get('stencil', 5)
     else:
         block_type = args.block_type
         crop_size = args.crop_size
         directions = args.directions
         use_confidence_gate = args.use_confidence_gate
+        grad_op = getattr(args, 'grad_op', 'scharr')
+        stencil = getattr(args, 'stencil', 5)
     
     model = build_model(
         block_type=block_type,
@@ -80,6 +84,8 @@ def evaluate_checkpoint(checkpoint_path, args):
         decoder_blocks=1,
         directions=directions,
         use_confidence_gate=use_confidence_gate,
+        grad_op=grad_op,
+        stencil=stencil,
     )
     model = model.to(device)
     
@@ -175,7 +181,9 @@ def main():
     parser.add_argument('--block_type', type=str, default='dw')
     parser.add_argument('--crop_size', type=int, default=512)
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--num_workers', type=int, default=4)
+    # NOTE: default 0 — the monkey-patched deterministic_crop closure is not
+    # picklable, so spawn-mode workers (Windows default) crash eval outright.
+    parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--split', type=str, default='valid')
     parser.add_argument('--directions', type=int, default=16)
     parser.add_argument('--use_confidence_gate', action=argparse.BooleanOptionalAction, default=True)
