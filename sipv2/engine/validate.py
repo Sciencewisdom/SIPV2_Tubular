@@ -141,7 +141,7 @@ def validate(
             fov_masks = batch['fov_mask'].to(device, non_blocking=True)
 
             with autocast('cuda'):
-                if block_type == 'sipv2':
+                if block_type in ('sipv2', 'sipv2_full', 'sipv2_road'):
                     outputs = model(images, image=images)
                 else:
                     outputs = model(images)
