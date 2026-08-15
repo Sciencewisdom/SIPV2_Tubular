@@ -70,6 +70,11 @@ def parse_args():
                         choices=['crossed', 'official'],
                         help="clDice formula variant; 'crossed' preserves historical "
                              "comparability, 'official' matches Shit et al. 2021")
+    parser.add_argument('--loss_compat', type=str, default='legacy',
+                        choices=['legacy', 'fixed'],
+                        help="legacy = historical loss behavior (crossed clDice + "
+                             "double-sigmoid Dice); fixed = official clDice + "
+                             "single-sigmoid Dice. Overrides --cldice_variant.")
     return parser.parse_args()
 
 
@@ -154,20 +159,23 @@ def main():
     print(f"Parameters: {n_params:,} ({n_params/1e6:.2f}M)")
 
     # Loss
+    _fixed = args.loss_compat == 'fixed'
     if args.topo_loss == 'cldice' or args.use_cldice:
         criterion = BCEDiceCLDiceLoss(
             bce_weight=1.0, dice_weight=1.0,
             cldice_weight=args.cldice_lambda,
             cldice_warmup=args.cldice_warmup,
-            cldice_variant=args.cldice_variant,
+            cldice_variant='official' if _fixed else args.cldice_variant,
+            legacy_double_sigmoid=not _fixed,
         )
-        print(f'Using BCEDice + clDice (lambda={args.cldice_lambda}, warmup={args.cldice_warmup})')
+        print(f'Using BCEDice + clDice (lambda={args.cldice_lambda}, warmup={args.cldice_warmup}, compat={args.loss_compat})')
     elif args.topo_loss == 'skelrec':
         from sipv2.losses import BCEDiceSkelRecLoss
         criterion = BCEDiceSkelRecLoss(
             bce_weight=1.0, dice_weight=1.0,
             skelrec_weight=args.cldice_lambda,
             skelrec_warmup=args.cldice_warmup,
+            legacy_double_sigmoid=not _fixed,
         )
         print(f'Using BCEDice + SkelRec (lambda={args.cldice_lambda}, warmup={args.cldice_warmup})')
     else:

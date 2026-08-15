@@ -44,12 +44,15 @@ class SkeletonRecallLoss(nn.Module):
 class BCEDiceSkelRecLoss(nn.Module):
     """BCE + Dice + lambda * skeleton-recall, same interface as BCEDiceCLDiceLoss."""
 
-    def __init__(self, bce_weight=1.0, dice_weight=1.0, skelrec_weight=0.3, skelrec_warmup=20):
+    def __init__(self, bce_weight=1.0, dice_weight=1.0, skelrec_weight=0.3, skelrec_warmup=20,
+                 legacy_double_sigmoid=True):
         super().__init__()
         self.bce_weight = bce_weight
         self.dice_weight = dice_weight
         self.skelrec_weight = skelrec_weight
         self.skelrec_warmup = skelrec_warmup
+        # See BCEDiceCLDiceLoss: legacy path double-applies sigmoid before DiceLoss.
+        self.legacy_double_sigmoid = legacy_double_sigmoid
         self.bce = nn.BCEWithLogitsLoss(reduction='none')
         self.dice = DiceLoss()
         self.skelrec = SkeletonRecallLoss()
@@ -63,7 +66,7 @@ class BCEDiceSkelRecLoss(nn.Module):
         else:
             bce_loss = bce_loss.mean()
 
-        dice_loss = self.dice(torch.sigmoid(pred), target)
+        dice_loss = self.dice(torch.sigmoid(pred) if self.legacy_double_sigmoid else pred, target)
 
         skel_loss = 0.0
         if epoch >= self.skelrec_warmup:

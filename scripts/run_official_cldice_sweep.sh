@@ -29,7 +29,7 @@ for EXP in E1 E4; do
         --img_size 512 --batch_size 2 --epochs 200 --lr 0.0003 \
         --use_amp --grad_clip 1.0 --num_workers 4 \
         --topo_loss cldice --cldice_lambda $L --cldice_warmup 20 \
-        --cldice_variant official \
+        --loss_compat fixed \
         --output_dir "$OUT" 2>&1 | tail -3
     fi
   done

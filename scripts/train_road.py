@@ -60,6 +60,11 @@ def parse_args():
                         choices=['crossed', 'official'],
                         help="clDice formula variant; 'crossed' preserves historical "
                              "comparability, 'official' matches Shit et al. 2021")
+    parser.add_argument('--loss_compat', type=str, default='legacy',
+                        choices=['legacy', 'fixed'],
+                        help="legacy = historical loss behavior (crossed clDice + "
+                             "double-sigmoid Dice); fixed = official clDice + "
+                             "single-sigmoid Dice. Overrides --cldice_variant.")
     # Road-specific model flags
     parser.add_argument('--block_type', type=str, default='dw',
                         choices=['dw', 'sipv2', 'sipv2_road'],
@@ -200,11 +205,13 @@ def main():
     print(f"Parameters: {n_params:,} ({n_params/1e6:.2f}M)")
 
     if args.use_cldice:
+        _fixed = args.loss_compat == 'fixed'
         criterion = BCEDiceCLDiceLoss(
             bce_weight=1.0, dice_weight=1.0,
             cldice_weight=args.cldice_lambda,
             cldice_warmup=args.cldice_warmup,
-            cldice_variant=args.cldice_variant,
+            cldice_variant='official' if _fixed else args.cldice_variant,
+            legacy_double_sigmoid=not _fixed,
         )
     else:
         criterion = BCEDiceLoss(bce_weight=1.0, dice_weight=1.0)
