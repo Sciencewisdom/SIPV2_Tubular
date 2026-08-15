@@ -97,81 +97,90 @@ def evaluate_checkpoint(checkpoint_path, args):
         model.load_state_dict(checkpoint)
     model.eval()
     
-    loader = get_deterministic_val_loader(
-        root_dir=args.data_root,
-        crop_size=crop_size,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        split=args.split,
-    )
-    
-    all_cases = []
-    all_pred_probs = []
-    all_masks = []
-    image_ids = []
-    
-    with torch.no_grad():
-        for batch in tqdm(loader, desc='Evaluating'):
-            images = batch['image'].to(device, non_blocking=True)
-            masks = batch['mask'].to(device, non_blocking=True)
-            
-            with autocast('cuda'):
-                if block_type in ('sipv2', 'sipv2_road'):
-                    outputs = model(images, image=images)
-                else:
-                    outputs = model(images)
-            
-            pred_prob = torch.sigmoid(outputs).detach().cpu().numpy()
-            masks_np = masks.detach().cpu().numpy()
-            
-            for i in range(pred_prob.shape[0]):
-                all_pred_probs.append(pred_prob[i, 0])
-                all_masks.append(masks_np[i, 0])
-                image_ids.append(batch['image_id'][i])
-    
-    # Threshold scan for best dice
-    thresholds = np.arange(0.05, 1.0, 0.05)
-    best_dice_th = 0.5
-    best_dice = 0.0
-    for th in thresholds:
-        dices = [pixel_metrics(p, m, threshold=th)['dice'] for p, m in zip(all_pred_probs, all_masks)]
-        mean_dice = np.mean(dices)
-        if mean_dice > best_dice:
-            best_dice = mean_dice
-            best_dice_th = th
-    
-    # Per-case metrics
-    for pred, mask, img_id in zip(all_pred_probs, all_masks, image_ids):
-        pm = pixel_metrics(pred, mask, threshold=best_dice_th)
-        skel = compute_all_skeleton_metrics(pred, mask, threshold=best_dice_th)
-        road = compute_all_road_topology_metrics(pred, mask, threshold=best_dice_th)
-        
-        case = {
-            'image_id': img_id,
-            'dice': float(pm['dice']),
-            'iou': float(pm['iou']),
-            'cldice': float(skel['cldice']),
-            'skel_recall': float(skel['skeleton_recall']),
-            'apls': float(road['apls']),
-            'connectivity': float(road['connectivity']),
-            'gap_recovery': float(road['gap_recovery']),
-        }
-        all_cases.append(case)
-    
-    # Aggregate
-    agg = {}
-    for key in ['dice', 'iou', 'cldice', 'skel_recall', 'apls', 'connectivity', 'gap_recovery']:
-        vals = [c[key] for c in all_cases]
-        agg[key] = float(np.mean(vals))
-        agg[key + '_std'] = float(np.std(vals))
-    agg['best_threshold'] = float(best_dice_th)
-    agg['n_cases'] = len(all_cases)
-    
-    return {
+    def run_split(split, fixed_threshold=None):
+        """Predict on a split and compute per-case metrics.
+        fixed_threshold=None scans thresholds on this split (valid protocol);
+        a float applies it as-is (test protocol — no test-set tuning)."""
+        loader = get_deterministic_val_loader(
+            root_dir=args.data_root,
+            crop_size=crop_size,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            split=split,
+        )
+        all_pred_probs, all_masks, image_ids = [], [], []
+        with torch.no_grad():
+            for batch in tqdm(loader, desc=f'Evaluating[{split}]'):
+                images = batch['image'].to(device, non_blocking=True)
+                masks = batch['mask'].to(device, non_blocking=True)
+                with autocast('cuda'):
+                    if block_type in ('sipv2', 'sipv2_road'):
+                        outputs = model(images, image=images)
+                    else:
+                        outputs = model(images)
+                pred_prob = torch.sigmoid(outputs).detach().cpu().numpy()
+                masks_np = masks.detach().cpu().numpy()
+                for i in range(pred_prob.shape[0]):
+                    all_pred_probs.append(pred_prob[i, 0])
+                    all_masks.append(masks_np[i, 0])
+                    image_ids.append(batch['image_id'][i])
+
+        if fixed_threshold is None:
+            # Threshold scan for best dice (VALID split only)
+            best_dice_th = 0.5
+            best_dice = 0.0
+            for th in np.arange(0.05, 1.0, 0.05):
+                dices = [pixel_metrics(p, m, threshold=th)['dice'] for p, m in zip(all_pred_probs, all_masks)]
+                mean_dice = np.mean(dices)
+                if mean_dice > best_dice:
+                    best_dice = mean_dice
+                    best_dice_th = th
+        else:
+            best_dice_th = fixed_threshold
+
+        all_cases = []
+        for pred, mask, img_id in zip(all_pred_probs, all_masks, image_ids):
+            pm = pixel_metrics(pred, mask, threshold=best_dice_th)
+            skel = compute_all_skeleton_metrics(pred, mask, threshold=best_dice_th)
+            road = compute_all_road_topology_metrics(pred, mask, threshold=best_dice_th)
+            all_cases.append({
+                'image_id': img_id,
+                'dice': float(pm['dice']),
+                'iou': float(pm['iou']),
+                'cldice': float(skel['cldice']),
+                'skel_recall': float(skel['skeleton_recall']),
+                'apls': float(road['apls']),
+                'connectivity': float(road['connectivity']),
+                'gap_recovery': float(road['gap_recovery']),
+            })
+        agg = {}
+        for key in ['dice', 'iou', 'cldice', 'skel_recall', 'apls', 'connectivity', 'gap_recovery']:
+            vals = [c[key] for c in all_cases]
+            agg[key] = float(np.mean(vals))
+            agg[key + '_std'] = float(np.std(vals))
+        agg['best_threshold'] = float(best_dice_th)
+        agg['n_cases'] = len(all_cases)
+        return all_cases, agg, best_dice_th
+
+    all_cases, agg, best_dice_th = run_split(args.split)
+
+    result = {
         'aggregate': agg,
         'cases': all_cases,
         'checkpoint': checkpoint_path,
     }
+
+    # Optional: strict protocol — threshold fixed on the tuning split, metrics
+    # reported on the held-out test split (no test-set tuning).
+    if getattr(args, 'test_with_valid_threshold', False):
+        test_cases, test_agg, _ = run_split('test', fixed_threshold=best_dice_th)
+        result['test_at_valid_threshold'] = {
+            'aggregate': test_agg,
+            'cases': test_cases,
+            'threshold_fixed_from': args.split,
+        }
+
+    return result
 
 
 def main():
@@ -185,6 +194,9 @@ def main():
     # picklable, so spawn-mode workers (Windows default) crash eval outright.
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--split', type=str, default='valid')
+    parser.add_argument('--test_with_valid_threshold', action='store_true',
+                        help='Strict protocol: pick threshold on --split, then also '
+                             'report metrics on the test split at that fixed threshold')
     parser.add_argument('--directions', type=int, default=16)
     parser.add_argument('--use_confidence_gate', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--output', type=str, default=None)
@@ -208,6 +220,16 @@ def main():
     print(f"  APLS: {agg['apls']:.4f} ± {agg['apls_std']:.4f}")
     print(f"  Conn: {agg['connectivity']:.4f} ± {agg['connectivity_std']:.4f}")
     print(f"  GapRec: {agg['gap_recovery']:.4f} ± {agg['gap_recovery_std']:.4f}")
+
+    if 'test_at_valid_threshold' in result:
+        tagg = result['test_at_valid_threshold']['aggregate']
+        print(f"\n  [strict] test split at valid-fixed threshold {agg['best_threshold']:.2f} "
+              f"(n={tagg['n_cases']}):")
+        print(f"  Dice: {tagg['dice']:.4f} ± {tagg['dice_std']:.4f}")
+        print(f"  clDice: {tagg['cldice']:.4f} ± {tagg['cldice_std']:.4f}")
+        print(f"  SkelRec: {tagg['skel_recall']:.4f} ± {tagg['skel_recall_std']:.4f}")
+        print(f"  APLS: {tagg['apls']:.4f} ± {tagg['apls_std']:.4f}")
+        print(f"  GapRec: {tagg['gap_recovery']:.4f} ± {tagg['gap_recovery_std']:.4f}")
 
 
 if __name__ == '__main__':
