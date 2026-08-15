@@ -18,10 +18,12 @@ from sipv2.metrics.junction_preservation import compute_junction_preservation
 
 
 CHECKPOINTS = {
-    'R0 (DW)': ('dw', 'outputs/road_real_r0_seed0/road_dw_crop512_bs8_ep50_seed0/checkpoints/checkpoint_best.pth'),
+    # Uniform protocol: final-epoch checkpoints only (checkpoint_best of road runs
+    # can be early-stopped at epoch 4 — see supplement S5 note; never use it).
+    'R0 (DW)': ('dw', 'outputs/road_real_r0_seed0/road_dw_crop512_bs8_ep50_seed0/checkpoints/checkpoint_final.pth'),
     'R1 (SIP-v2)': ('sipv2_road', 'outputs/road_real_r1_seed42/road_sipv2_road_crop512_bs8_ep50_seed42/checkpoints/checkpoint_epoch49.pth'),
     'R2 (+clDice)': ('sipv2_road', 'outputs/road_real_r2_seed42/road_sipv2_road_crop512_bs8_ep50_seed42_cldice0.3/checkpoints/checkpoint_epoch49.pth'),
-    'R3 (ATW λ=0.3)': ('sipv2_road', 'outputs/road_experiments/road_sipv2_road_atw_crop512_bs8_ep15_seed42_atw0.3/checkpoints/checkpoint_best.pth'),
+    'R3 (ATW λ=0.3)': ('sipv2_road', 'outputs/road_experiments/road_sipv2_road_atw_crop512_bs8_ep15_seed42_atw0.3/checkpoints/checkpoint_final.pth'),
     'R3_v3 (ATW λ=0.15)': ('sipv2_road', 'outputs/road_experiments/road_sipv2_road_atw_crop512_bs8_ep5_seed42_atw0.15/checkpoints/checkpoint_final.pth'),
     'R3_v4 (ATW λ=0.1)': ('sipv2_road', 'outputs/road_experiments/road_sipv2_road_atw_crop512_bs8_ep5_seed42_atw0.1/checkpoints/checkpoint_final.pth'),
     'R3_v5 (ATW σ=0.5 λ=0.15)': ('sipv2_road', 'outputs/road_experiments_multiscale/road_sipv2_road_atw_crop512_bs8_ep5_seed42_atw0.15/checkpoints/checkpoint_final.pth'),
@@ -93,7 +95,9 @@ def evaluate_model(name, model, test_loader, device, block_type, threshold=0.5):
                     all_jpr.append(jpr)
 
     results = {
-        'best_dice': float(np.mean(all_best_dice)),
+        # WARNING: per-case oracle threshold on the test set — test-set tuning.
+        # Never cite this field; kept only for diagnostics.
+        'oracle_best_dice_test_tuned': float(np.mean(all_best_dice)),
         'dice': float(np.mean(all_dice)),
         'iou': float(np.mean(all_iou)),
         'cldice': float(np.mean(all_cldice)),

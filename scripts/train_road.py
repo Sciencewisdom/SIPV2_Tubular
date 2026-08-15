@@ -77,6 +77,8 @@ def parse_args():
                         help='Gradient operator for the structure tensor (B3 ablation)')
     parser.add_argument('--stencil', type=int, default=5, choices=[3, 5],
                         help='Diffusion stencil size (B3 ablation)')
+    parser.add_argument('--tensor_sigma', type=float, default=1.5,
+                        help='Structure-tensor smoothing sigma (stored in config.json for faithful eval)')
     return parser.parse_args()
 
 
@@ -199,6 +201,7 @@ def main():
         use_confidence_gate=args.use_confidence_gate,
         grad_op=args.grad_op,
         stencil=args.stencil,
+        tensor_sigma=args.tensor_sigma,
     )
     model = model.to(device)
     n_params = model.count_parameters()

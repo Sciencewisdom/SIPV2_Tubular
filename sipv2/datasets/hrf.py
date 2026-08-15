@@ -19,7 +19,10 @@ class HRFDataset(Dataset):
         assert len(all_gt_paths) > 0, f"No GT in {gt_dir}"
         assert len(all_image_paths) == len(all_gt_paths), f"Mismatch: {len(all_image_paths)} vs {len(all_gt_paths)}"
         if val_indices is None:
-            val_indices = list(range(20, 30))  # 30 images, last 10 as val
+            # Stratified split: 5 diabetic + 5 healthy as val/test.
+            # After global sort, indices 0-14 are *_dr (diabetic), 15-29 *_h (healthy);
+            # the old range(20,30) silently selected 10 healthy-only images.
+            val_indices = list(range(10, 15)) + list(range(25, 30))
         train_indices = [i for i in range(len(all_image_paths)) if i not in val_indices]
         indices = train_indices if split == 'train' else val_indices
         self.image_paths = [all_image_paths[i] for i in indices]
@@ -39,19 +42,22 @@ class HRFDataset(Dataset):
         if mask.max() > 1: mask = mask / 255.0
         return (mask > 0.5).astype(np.float32)
 
+    def _load_fov(self, img_name):
+        """Load FOV mask; warn loudly instead of silently falling back to all-ones."""
+        import warnings
+        if self.mask_dir:
+            mask_path = os.path.join(self.mask_dir, f"{img_name}_mask.tif")
+            if os.path.exists(mask_path):
+                return self._load_mask(mask_path)
+            warnings.warn(f"FOV mask missing for {img_name}; falling back to all-ones FOV")
+        return None  # caller fills with ones
+
     def __getitem__(self, idx):
         img = self._load_image(self.image_paths[idx])
         mask = self._load_mask(self.gt_paths[idx])
         # Create FOV mask from image size or load if available
-        if self.mask_dir:
-            img_name = os.path.basename(self.image_paths[idx]).split('.')[0]
-            mask_name = f"{img_name}_mask.tif"
-            mask_path = os.path.join(self.mask_dir, mask_name)
-            if os.path.exists(mask_path):
-                fov_mask = self._load_mask(mask_path)
-            else:
-                fov_mask = np.ones_like(mask)
-        else:
+        fov_mask = self._load_fov(os.path.basename(self.image_paths[idx]).split('.')[0])
+        if fov_mask is None:
             fov_mask = np.ones_like(mask)
         h, w = self.img_size, self.img_size
         img = cv2.resize(img, (w, h), interpolation=cv2.INTER_LINEAR)

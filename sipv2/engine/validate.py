@@ -169,6 +169,7 @@ def validate(
     # Threshold scan
     best_dice_th = 0.5
     best_dice = 0.0
+    best_dices = None
     dice_by_thresh = {}
     for th in thresholds:
         dices = []
@@ -182,16 +183,17 @@ def validate(
         if mean_dice > best_dice:
             best_dice = mean_dice
             best_dice_th = th
+            best_dices = dices
 
     metrics['best_dice'] = best_dice
     metrics['best_dice_threshold'] = best_dice_th
     metrics['dice_by_threshold'] = dice_by_thresh
-    metrics['dice_per_case'] = dices  # per-case dice at best threshold
+    metrics['dice_per_case'] = best_dices  # per-case dice at best threshold
 
-    # Skeleton metrics at best threshold
+    # Skeleton metrics at best threshold (FOV-masked, same protocol as region metrics)
     skel_metrics_list = []
-    for pred, mask in zip(all_pred_probs, all_masks):
-        skel_m = compute_all_skeleton_metrics(pred, mask, threshold=best_dice_th)
+    for pred, mask, fov in zip(all_pred_probs, all_masks, all_fov_masks):
+        skel_m = compute_all_skeleton_metrics(pred * fov, mask * fov, threshold=best_dice_th)
         skel_metrics_list.append(skel_m)
 
     for key in ['cldice', 'skeleton_recall', 'skeleton_precision', 'thin_vessel_recall', 'break_count']:
@@ -322,8 +324,8 @@ def validate_with_tensor_capture(
     metrics['best_dice_threshold'] = best_dice_th
 
     skel_metrics_list = []
-    for pred, mask in zip(all_pred_probs, all_masks):
-        skel_m = compute_all_skeleton_metrics(pred, mask, threshold=best_dice_th)
+    for pred, mask, fov in zip(all_pred_probs, all_masks, all_fov_masks):
+        skel_m = compute_all_skeleton_metrics(pred * fov, mask * fov, threshold=best_dice_th)
         skel_metrics_list.append(skel_m)
 
     for key in ['cldice', 'skeleton_recall', 'skeleton_precision', 'thin_vessel_recall', 'break_count']:

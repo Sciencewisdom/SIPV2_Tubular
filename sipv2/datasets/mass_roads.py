@@ -105,7 +105,7 @@ class MassachusettsRoadsDataset(Dataset):
             h, w = img.shape[:2]
             M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
             img = cv2.warpAffine(img, M, (w, h), borderMode=cv2.BORDER_REFLECT)
-            mask = cv2.warpAffine(mask, M, (w, h), borderMode=cv2.BORDER_REFLECT)
+            mask = cv2.warpAffine(mask, M, (w, h), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REFLECT)
 
         if np.random.rand() > 0.5:
             scale = np.random.uniform(0.8, 1.2)

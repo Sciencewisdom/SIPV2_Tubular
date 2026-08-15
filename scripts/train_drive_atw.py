@@ -142,8 +142,11 @@ def main():
     if args.resume:
         start_epoch, resume_metrics = load_checkpoint(model, optimizer, args.resume, device)
         start_epoch += 1
-        best_dice = resume_metrics.get('best_dice', 0.0)
-        print(f"Resumed from epoch {start_epoch-1}")
+        # Do NOT inherit the pre-training best_dice: it was computed with the
+        # threshold-scan protocol, while this stage compares fixed-0.5 Dice
+        # (validate_drive_atw). Mixing the two would silently prevent
+        # checkpoint_best from ever being written during fine-tuning.
+        print(f"Resumed from epoch {start_epoch-1}; best_dice reset to 0 (protocol change: fixed-0.5 Dice)")
 
     end_epoch = args.epochs
     if args.resume and start_epoch >= end_epoch:

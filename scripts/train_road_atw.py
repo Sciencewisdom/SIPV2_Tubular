@@ -56,6 +56,8 @@ def parse_args():
                         choices=['dw', 'sipv2', 'sipv2_road'])
     parser.add_argument('--directions', type=int, default=16)
     parser.add_argument('--use_confidence_gate', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--tensor_sigma', type=float, default=1.5,
+                        help='Structure-tensor smoothing sigma (stored in config.json for faithful eval)')
     return parser.parse_args()
 
 
@@ -181,6 +183,7 @@ def main():
         decoder_blocks=1,
         directions=args.directions,
         use_confidence_gate=args.use_confidence_gate,
+        tensor_sigma=args.tensor_sigma,
     )
     model = model.to(device)
     n_params = model.count_parameters()

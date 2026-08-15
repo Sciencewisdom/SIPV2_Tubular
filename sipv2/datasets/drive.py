@@ -57,6 +57,11 @@ class DRIVEDataset(Dataset):
                 mask_dir = os.path.join(root_dir, 'test', 'mask')
             else:
                 use_test = False
+                import warnings
+                warnings.warn(
+                    f"DRIVE test split has no GT under {test_gt_dir}; "
+                    "falling back to the 4-case validation split held out from training"
+                )
 
         if not use_test:
             # Use training set with fixed split
@@ -145,8 +150,8 @@ class DRIVEDataset(Dataset):
             h, w = img.shape[:2]
             M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
             img = cv2.warpAffine(img, M, (w, h), borderMode=cv2.BORDER_REFLECT)
-            mask = cv2.warpAffine(mask, M, (w, h), borderMode=cv2.BORDER_REFLECT)
-            fov_mask = cv2.warpAffine(fov_mask, M, (w, h), borderMode=cv2.BORDER_REFLECT)
+            mask = cv2.warpAffine(mask, M, (w, h), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REFLECT)
+            fov_mask = cv2.warpAffine(fov_mask, M, (w, h), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REFLECT)
 
         # Scale
         if np.random.rand() > 0.5:

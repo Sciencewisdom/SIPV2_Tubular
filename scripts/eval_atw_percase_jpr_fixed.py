@@ -36,10 +36,26 @@ CKPTS = {
 OUT = 'outputs/fixed_atw_percase_jpr.json'
 
 
+def _arch_kwargs_from_config(ckpt_path):
+    """Rebuild architecture from the run's config.json (two levels up from the
+    checkpoint). Falls back to the historical defaults; grad_op/stencil/
+    tensor_sigma do not change parameter shapes, so hardcoding them would be a
+    *silent* mismatch — always prefer the stored config."""
+    import json
+    cfg_path = os.path.join(os.path.dirname(os.path.dirname(ckpt_path)), 'config.json')
+    kw = dict(directions=16, use_confidence_gate=True)
+    if os.path.exists(cfg_path):
+        cfg = json.load(open(cfg_path))
+        for k in ('directions', 'use_confidence_gate', 'grad_op', 'stencil', 'tensor_sigma'):
+            if cfg.get(k) is not None:
+                kw[k] = cfg[k]
+    return kw
+
+
 def eval_jpr(ckpt_path, test_loader, device, threshold=0.5):
     model = build_model(block_type='sipv2_road', in_channels=3, num_classes=1,
                         channels=[32, 64, 128, 256], blocks_per_stage=[2, 2, 2, 2],
-                        decoder_blocks=1, directions=16, use_confidence_gate=True)
+                        decoder_blocks=1, **_arch_kwargs_from_config(ckpt_path))
     model = model.to(device)
     load_checkpoint(model, None, ckpt_path, device)
     model.eval()
