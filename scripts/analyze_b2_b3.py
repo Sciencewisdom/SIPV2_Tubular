@@ -45,30 +45,44 @@ def b2():
 
 def b3():
     print('\n=== B3: road component ablation ===')
-    # R1 (full SIP-v2 Road, seed 42) reference from the deterministic per-case eval
-    ref_path = 'outputs/road_percase_deterministic.json'
-    if os.path.exists(ref_path):
-        cases = json.load(open(ref_path))['R1_SIPV2_final']['cases']
-        print('R1 reference (seed 42, n=%d):' % len(cases))
-        for k in ['dice', 'cldice', 'skel_recall', 'apls', 'gap_recovery']:
-            v = np.array([c[k] for c in cases if c.get(k) is not None], dtype=float)
-            print(f'  {k}: {v.mean():.4f} +- {v.std():.4f}')
-    # Prefer deterministic per-case eval JSONs (run_b3_eval.sh); fall back to
-    # parsing training-log final validation metrics.
     KEYS = ['dice', 'cldice', 'skel_recall', 'apls', 'gap_recovery']
-    out = {}
+
+    def agg_from_cases(cases):
+        agg = {}
+        for k in KEYS:
+            v = np.array([c[k] for c in cases if c.get(k) is not None], dtype=float)
+            agg[k] = {'mean': float(v.mean()), 'std': float(v.std()), 'n': len(v)}
+        return agg
+
+    # Preferred: fixed-code retrain evals (uniform protocol; audit section 9).
+    fixed_jsons = {a: f'outputs/fixed_eval_{a}.json'
+                   for a in ['r1', 'r2', 'b3_scharr', 'b3_sobel', 'b3_stencil3', 'b3_nogate']}
+    if any(os.path.exists(p) for p in fixed_jsons.values()):
+        out = {}
+        for name, path in fixed_jsons.items():
+            if not os.path.exists(path):
+                continue
+            d = json.load(open(path))
+            entry = {'valid': agg_from_cases(d['cases'])}
+            print(name, 'valid:', {k: f"{v['mean']:.4f}+-{v['std']:.4f}" for k, v in entry['valid'].items()})
+            if 'test_at_valid_threshold' in d:
+                entry['test_fixed_thr'] = agg_from_cases(d['test_at_valid_threshold']['cases'])
+                print(name, 'test@valid-thr:', {k: f"{v['mean']:.4f}+-{v['std']:.4f}" for k, v in entry['test_fixed_thr'].items()})
+            out[name] = entry
+        return out
+
+    # DEPRECATED fallback: pre-fix evals (diffusion disabled; not comparable
+    # across protocols — see audit section 9). Kept for archaeology only.
     jsons = {a: f'outputs/b3_eval_{a}.json' for a in ['sobel', 'stencil3', 'nogate', 'scharr_bs4']}
     if any(os.path.exists(p) for p in jsons.values()):
+        print('WARNING: using deprecated pre-fix eval JSONs (diffusion-disabled models)')
+        out = {}
         for name, path in jsons.items():
             if not os.path.exists(path):
                 continue
             cases = json.load(open(path))['cases']
-            agg = {}
-            for k in KEYS:
-                v = np.array([c[k] for c in cases if c.get(k) is not None], dtype=float)
-                agg[k] = {'mean': float(v.mean()), 'std': float(v.std()), 'n': len(v)}
-            out[name] = {'deterministic': agg}
-            print(name, {k: f"{a['mean']:.4f}+-{a['std']:.4f}" for k, a in agg.items()})
+            out[name] = {'deterministic_deprecated': agg_from_cases(cases)}
+            print(name, {k: f"{a['mean']:.4f}+-{a['std']:.4f}" for k, a in out[name]['deterministic_deprecated'].items()})
         return out
     log = 'outputs/b3_ablation.log'
     if not os.path.exists(log):
